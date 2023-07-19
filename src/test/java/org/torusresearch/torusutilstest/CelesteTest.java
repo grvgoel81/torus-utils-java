@@ -97,17 +97,17 @@ public class CelesteTest {
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(args.getVerifier(), args.getVerifierId()).get();
         TorusPublicKey key = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), args).get();
         assertEquals("0xeC80FB9aB308Be1789Bd3f9317962D5505A4A242", key.getFinalKeyData().getEvmAddress());
-        assertEquals(TypeOfUser.v1, key.getMetadata().getTypeOfUser());
-        /*assertThat(key).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
+        assertEquals("0xeC80FB9aB308Be1789Bd3f9317962D5505A4A242", key.getoAuthKeyData().getEvmAddress());
+        assertThat(key).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
                 new OAuthPubKeyData("0xeC80FB9aB308Be1789Bd3f9317962D5505A4A242",
                         "d1a99fbec9326f04687daea4261b15b68cc45671554d43e94529d62857bf236c",
-                        "085bc72609f474b7b80081ecdc92d0dca241327195c7655c7a35b601c1f93e8e"),
+                        "85bc72609f474b7b80081ecdc92d0dca241327195c7655c7a35b601c1f93e8e"),
                 new FinalPubKeyData("0xeC80FB9aB308Be1789Bd3f9317962D5505A4A242",
                         "d1a99fbec9326f04687daea4261b15b68cc45671554d43e94529d62857bf236c",
-                        "085bc72609f474b7b80081ecdc92d0dca241327195c7655c7a35b601c1f93e8e"),
+                        "85bc72609f474b7b80081ecdc92d0dca241327195c7655c7a35b601c1f93e8e"),
                 new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false),
                 new NodesData(new ArrayList<>())
-        ));*/
+        ));
 
         String v2Verifier = "tkey-google-celeste";
         // 1/1 user
@@ -167,20 +167,20 @@ public class CelesteTest {
         }}, JwtUtils.generateIdToken(TORUS_TEST_EMAIL, algorithmRs)).get();
         System.out.println(retrieveSharesResponse.getFinalKeyData().getPrivKey());
         assert (retrieveSharesResponse.getFinalKeyData().getPrivKey().equals("0ae056aa938080c9e8bf6641261619e09fd510c91bb5aad14b0de9742085a914"));
-        assertEquals("0x58420FB83971C4490D8c9B091f8bfC890D716617", retrieveSharesResponse.getFinalKeyData().getEvmAddress());
         assertThat(retrieveSharesResponse).isEqualToComparingFieldByFieldRecursively(new RetrieveSharesResponse(
-                new FinalKeyData("0x1e784B325633D10E0C83540621f769179d2e3b30",
-                        "11437151187570330525859293326584557417113863683174119328941497694140550466272",
-                        "91357081663862880168036261895972185802440111547643813916181264118293595820054",
+                new FinalKeyData("0x58420FB83971C4490D8c9B091f8bfC890D716617",
+                        "52341387188992824699277738075060291080542842532049485767610407155814195977588",
+                        "49374130040921313246889636831458958611176080890815526914824291792889013619137",
                         "0ae056aa938080c9e8bf6641261619e09fd510c91bb5aad14b0de9742085a914"),
                 new OAuthKeyData("0x58420FB83971C4490D8c9B091f8bfC890D716617",
                         "73b82ce0f8201a962636d404fe7a683f37c2267a9528576e1dac9964940add74",
                         "6d28c46c5385b90322bde74d6c5096e154eae2838399f4d6e8d752f7b0c449c1",
-                        "0ae056aa938080c9e8bf6641261619e09fd510c91bb5aad14b0de9742085a914"),
+                        "ae056aa938080c9e8bf6641261619e09fd510c91bb5aad14b0de9742085a914"),
                 new SessionData(new ArrayList<>(), ""),
                 new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false),
                 new NodesData(new ArrayList<>())
         ));
+        assertEquals("0x58420FB83971C4490D8c9B091f8bfC890D716617", retrieveSharesResponse.getFinalKeyData().getEvmAddress());
     }
 
     @DisplayName("Aggregate Login test")
@@ -196,9 +196,9 @@ public class CelesteTest {
         }}, hashedIdToken).get();
         assertEquals("0x535Eb1AefFAc6f699A2a1A5846482d7b5b2BD564", retrieveSharesResponse.getoAuthKeyData().getEvmAddress());
         assertThat(retrieveSharesResponse).isEqualToComparingFieldByFieldRecursively(new RetrieveSharesResponse(
-                new FinalKeyData("0x451AF9da3f9F85C033308DE0097A8BCbC96386db",
-                        "10710639575321525719048661415949854969960920914113535370288710504072019615703",
-                        "30368521037273100161184536216420559893463609930384233211589634913760226888329",
+                new FinalKeyData("0x535Eb1AefFAc6f699A2a1A5846482d7b5b2BD564",
+                        "101061340810866670262950116976079437717018183915415066754041292109250417463754",
+                        "86763859628443771962047376802448856635459247884668608661434929140781326522091",
                         "356305761eca57f27b09700d76456ad627b084152725dbfdfcfa0abcd9d4f17e"),
                 new OAuthKeyData("0x535Eb1AefFAc6f699A2a1A5846482d7b5b2BD564",
                         "df6eb11d52e76b388a44896e9442eda17096c2b67b0be957a4ba0b68a70111ca",
