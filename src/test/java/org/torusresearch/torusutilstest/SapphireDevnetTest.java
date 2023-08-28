@@ -211,6 +211,19 @@ public class SapphireDevnetTest {
         ));
     }
 
+    @DisplayName("New User Login test")
+    @Test
+    public void shouldNewUserLogin() throws ExecutionException, InterruptedException {
+        String email = JwtUtils.getRandomEmail();
+        String token = JwtUtils.generateIdToken(email, algorithmRs);
+        NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_VERIFIER, email).get();
+        RetrieveSharesResponse retrieveSharesResponse = torusUtils.retrieveShares(nodeDetails.getTorusNodeSSSEndpoints(), nodeDetails.getTorusIndexes(), TORUS_TEST_VERIFIER, new HashMap<String, Object>() {{
+            put("verifier_id", email);
+        }}, token).get();
+        assert (retrieveSharesResponse.getMetadata().getTypeOfUser().equals(TypeOfUser.v2));
+        assertEquals(retrieveSharesResponse.getMetadata().isUpgraded(), false);
+    }
+
     @DisplayName("Should be able to login even when node is down")
     @Test
     public void shouldLoginWhenNodeIsDown() throws Exception {
@@ -301,29 +314,6 @@ public class SapphireDevnetTest {
         assertNotNull(result.metadata.nonce);
     }
 
-    @DisplayName("Should fetch pub address of tss verifier id")
-    @Test
-    public void shouldFetchPubAddressOfTSSVerifierId() throws Exception {
-        String email = TORUS_EXTENDED_VERIFIER_EMAIL;
-        int nonce = 0;
-        String tssTag = "default";
-        String tssVerifierId = email + "\u0015" + tssTag + "\u0016" + nonce;
-        VerifierArgs verifierArgs = new VerifierArgs(TORUS_TEST_VERIFIER, email, tssVerifierId);
-        NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_VERIFIER, email).get();
-        TorusPublicKey torusPublicKey = torusUtils.getPublicAddress(nodeDetails.getTorusNodeSSSEndpoints(), nodeDetails.getTorusNodePub(), verifierArgs).get();
-        assertEquals(torusPublicKey.getFinalKeyData().getEvmAddress(), "0xff46925E578AEfC505c3F084Fea10b370d69378B");
-        assertThat(torusPublicKey).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
-                new OAuthPubKeyData("0xff46925E578AEfC505c3F084Fea10b370d69378B",
-                        "8eedc5d541759bb1a0bff6605735179da8b69e7771302f7a7faad0f4987c089a",
-                        "771f69069a62513590be1230fcf04c578e06133062d236563ef59fe5dcc65dda"),
-                new FinalPubKeyData("0xff46925E578AEfC505c3F084Fea10b370d69378B",
-                        "8eedc5d541759bb1a0bff6605735179da8b69e7771302f7a7faad0f4987c089a",
-                        "771f69069a62513590be1230fcf04c578e06133062d236563ef59fe5dcc65dda"),
-                new Metadata(null, new BigInteger("8332247225241652835009259212266667289511442930807823033798904030824804756825"), TypeOfUser.v2, false),
-                new NodesData(new ArrayList<>())
-        ));
-    }
-
     @DisplayName("should allow test tss verifier id to fetch shares")
     @Test
     public void shouldAllowTestTssVerifierIdToFetchShares() throws ExecutionException, InterruptedException, TorusException {
@@ -372,37 +362,6 @@ public class SapphireDevnetTest {
                 new NodesData(retrieveSharesResponse.nodesData.nodeIndexes)
         ));
     }
-
-    /*@DisplayName("should be able to import a key for a new user")
-    @Test
-    public void shouldImportKeyForNewUser() throws Exception {
-        String email = JwtUtils.getRandomEmail();
-        String idToken = JwtUtils.generateIdToken(email, algorithmRs);
-        String privHex = Utils.generatePrivate().toString(16);
-        NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_VERIFIER, email).get();
-        RetrieveSharesResponse response = torusUtils.importPrivateKey(nodeDetails.getTorusNodeSSSEndpoints(), nodeDetails.getTorusIndexes(),
-                nodeDetails.getTorusNodePub(), TORUS_TEST_VERIFIER, new HashMap<String, Object>() {{
-                    put("verifier_id", email);
-                }}, idToken, privHex, null).get();
-        assertEquals(response.finalKeyData.privKey, privHex);
-    }*/
-
-
-    /*@DisplayName("should be able to import a key for a existing user")
-    @Test
-    public void shouldImportKeyForExistingUser() throws Exception {
-        String idToken = JwtUtils.generateIdToken(TORUS_TEST_VERIFIER, algorithmRs);
-        String privHex = Utils.generatePrivate().toString(16);
-        NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_VERIFIER, TORUS_IMPORT_EMAIL).get();
-        RetrieveSharesResponse response = torusUtils.importPrivateKey(nodeDetails.getTorusNodeSSSEndpoints(), nodeDetails.getTorusIndexes(),
-                nodeDetails.getTorusNodePub(), TORUS_TEST_VERIFIER, new HashMap<String, Object>() {{
-                    put("verifier_id", TORUS_IMPORT_EMAIL);
-                }}, idToken, privHex, null).get();
-        assertEquals(response.finalKeyData.privKey, privHex);
-        TorusPublicKey publicKey = torusUtils.getPublicAddress(nodeDetails.getTorusNodeSSSEndpoints(), nodeDetails.getTorusNodePub(),
-                new VerifierArgs(TORUS_TEST_VERIFIER, TORUS_TEST_EMAIL)).get();
-        assertEquals(response.finalKeyData.evmAddress, publicKey.getFinalKeyData().getEvmAddress());
-    }*/
 
     @DisplayName("should assign key to tss verifier id")
     @Test
