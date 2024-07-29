@@ -1,30 +1,39 @@
 package org.torusresearch.torusutils.types;
 
+import static org.torusresearch.fetchnodedetails.types.Utils.METADATA_MAP;
+import static org.torusresearch.fetchnodedetails.types.Utils.SIGNER_MAP;
+
+import org.torusresearch.fetchnodedetails.types.Web3AuthNetwork;
+
 import java.math.BigInteger;
 
 public class TorusCtorOptions {
-    private String metadataHost = "https://metadata.tor.us";
-    private String allowHost = "https://signer.tor.us/api/allow";
-    private String signerHost = "https://signer.tor.us/api/sign";
+    private String legacyMetadataHost;
+    private String allowHost;
+    private String signerHost;
     // in seconds
     private BigInteger serverTimeOffset = new BigInteger("0");
     private String origin;
-    private String network = "mainnet";
+    private Web3AuthNetwork network;
     private String clientId;
     private boolean enableOneKey = false;
+    private KeyType keyType = KeyType.secp256k1;
 
-    private boolean legacyNonce = false;
-
-    public TorusCtorOptions(String origin, String clientId) {
+    public TorusCtorOptions(String origin, String clientId, Web3AuthNetwork network) {
         this.origin = origin;
         this.clientId = clientId;
+        this.network = network;
+        this.legacyMetadataHost = METADATA_MAP.get(network);
+        this.allowHost = SIGNER_MAP.get(network) + "/api/allow";
+        this.signerHost = SIGNER_MAP.get(network) + "/api/sign";
+        this.serverTimeOffset = BigInteger.valueOf(System.currentTimeMillis() / 1000);
     }
 
-    public String getNetwork() {
+    public Web3AuthNetwork getNetwork() {
         return network;
     }
 
-    public void setNetwork(String network) {
+    public void setNetwork(Web3AuthNetwork network) {
         this.network = network;
     }
 
@@ -44,14 +53,6 @@ public class TorusCtorOptions {
         this.serverTimeOffset = serverTimeOffset;
     }
 
-    public String getSignerHost() {
-        return signerHost;
-    }
-
-    public void setSignerHost(String signerHost) {
-        this.signerHost = signerHost;
-    }
-
     public String getAllowHost() {
         return allowHost;
     }
@@ -60,20 +61,16 @@ public class TorusCtorOptions {
         this.allowHost = allowHost;
     }
 
-    public String getMetadataHost() {
-        return metadataHost;
+    public String getSignerHost() { return signerHost; }
+
+    public void setSignerHost(String signerHost) { this.signerHost = signerHost; }
+
+    public String getLegacyMetadataHost() {
+        return legacyMetadataHost;
     }
 
-    public void setMetadataHost(String _metadataHost) {
-        this.metadataHost = _metadataHost;
-    }
-
-    public boolean isLegacyNonce() {
-        return legacyNonce;
-    }
-
-    public void setLegacyNonce(boolean legacyNonce) {
-        this.legacyNonce = legacyNonce;
+    public void setLegacyMetadataHost(String _metadataHost) {
+        this.legacyMetadataHost = _metadataHost;
     }
 
     public String getClientId() {
@@ -91,4 +88,13 @@ public class TorusCtorOptions {
     public void setEnableOneKey(boolean enableOneKey) {
         this.enableOneKey = enableOneKey;
     }
+
+    public KeyType getKeyType() {
+        return keyType;
+    }
+
+    public void setKeyType(KeyType keyType) {
+        this.keyType = keyType;
+    }
+
 }

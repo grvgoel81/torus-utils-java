@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.auth0.jwt.algorithms.Algorithm;
 
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.torusresearch.fetchnodedetails.FetchNodeDetails;
 import org.torusresearch.fetchnodedetails.types.NodeDetails;
-import org.torusresearch.fetchnodedetails.types.TorusNetwork;
+import org.torusresearch.fetchnodedetails.types.Web3AuthNetwork;
 import org.torusresearch.torusutils.TorusUtils;
 import org.torusresearch.torusutils.types.FinalKeyData;
 import org.torusresearch.torusutils.types.FinalPubKeyData;
@@ -20,9 +21,9 @@ import org.torusresearch.torusutils.types.Metadata;
 import org.torusresearch.torusutils.types.NodesData;
 import org.torusresearch.torusutils.types.OAuthKeyData;
 import org.torusresearch.torusutils.types.OAuthPubKeyData;
-import org.torusresearch.torusutils.types.RetrieveSharesResponse;
 import org.torusresearch.torusutils.types.SessionData;
 import org.torusresearch.torusutils.types.TorusCtorOptions;
+import org.torusresearch.torusutils.types.TorusKey;
 import org.torusresearch.torusutils.types.TorusPublicKey;
 import org.torusresearch.torusutils.types.TypeOfUser;
 import org.torusresearch.torusutils.types.VerifierArgs;
@@ -58,9 +59,8 @@ public class MainnetTest {
     @BeforeAll
     static void setup() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         System.out.println("Setup Starting");
-        fetchNodeDetails = new FetchNodeDetails(TorusNetwork.MAINNET);
-        TorusCtorOptions opts = new TorusCtorOptions("Custom", "BEaGnq-mY0ZOXk2UT1ivWUe0PZ_iJX4Vyb6MtpOp7RMBu_6ErTrATlfuK3IaFcvHJr27h6L1T4owkBH6srLphIw");
-        opts.setNetwork(TorusNetwork.MAINNET.toString());
+        fetchNodeDetails = new FetchNodeDetails(Web3AuthNetwork.MAINNET);
+        TorusCtorOptions opts = new TorusCtorOptions("Custom", "YOUR_CLIENT_ID", Web3AuthNetwork.MAINNET);
         opts.setAllowHost("https://signer.tor.us/api/allow");
         torusUtils = new TorusUtils(opts);
         ECPrivateKey privateKey = (ECPrivateKey) PemUtils.readPrivateKeyFromFile("src/test/java/org/torusresearch/torusutilstest/keys/key.pem", "EC");
@@ -73,8 +73,9 @@ public class MainnetTest {
     public void shouldGetPublicAddress() throws ExecutionException, InterruptedException {
         VerifierArgs args = new VerifierArgs("google", TORUS_TEST_EMAIL, "");
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(args.getVerifier(), args.getVerifierId()).get();
-        TorusPublicKey publicAddress = torusUtils.getPublicAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), args).get();
-        assertEquals("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E", publicAddress.getFinalKeyData().getEvmAddress());
+        TorusPublicKey publicAddress = torusUtils.getPublicAddress(nodeDetails.getTorusNodeEndpoints(), args).get();
+        assertEquals("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E", publicAddress.getFinalKeyData().getWalletAddress());
+        assertTrue(JwtUtils.getTimeDiff(publicAddress.getMetadata().getServerTimeOffset()) < 20);
         assertThat(publicAddress).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
                 new OAuthPubKeyData("0x0C44AFBb5395a9e8d28DF18e1326aa0F16b9572A",
                         "3b5655d78978b6fd132562b5cb66b11bcd868bd2a9e16babe4a1ca50178e57d4",
@@ -82,8 +83,8 @@ public class MainnetTest {
                 new FinalPubKeyData("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E",
                         "72beda348a832aed06044a258cb6a8d428ec7c245c5da92db5da4f3ab433e55",
                         "54ace0d3df2504fa29f17d424a36a0f92703899fad0afee93d010f6d84b310e5"),
-                new Metadata(publicAddress.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false),
-                new NodesData(new ArrayList<>())
+                new Metadata(publicAddress.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false, publicAddress.getMetadata().getServerTimeOffset()),
+                new NodesData(publicAddress.nodesData.nodeIndexes)
         ));
     }
 
@@ -92,8 +93,8 @@ public class MainnetTest {
     public void shouldFetchUserTypeAndPublicAddress() throws ExecutionException, InterruptedException {
         VerifierArgs args = new VerifierArgs("google", TORUS_TEST_EMAIL, "");
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(args.getVerifier(), args.getVerifierId()).get();
-        TorusPublicKey key = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), args).get();
-        assertEquals("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E", key.getFinalKeyData().getEvmAddress());
+        TorusPublicKey key = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), args).get();
+        assertEquals("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E", key.getFinalKeyData().getWalletAddress());
         assertEquals(TypeOfUser.v2, key.getMetadata().getTypeOfUser());
         assertThat(key).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
                 new OAuthPubKeyData("0x0C44AFBb5395a9e8d28DF18e1326aa0F16b9572A",
@@ -102,15 +103,15 @@ public class MainnetTest {
                 new FinalPubKeyData("0xb2e1c3119f8D8E73de7eaF7A535FB39A3Ae98C5E",
                         "72beda348a832aed06044a258cb6a8d428ec7c245c5da92db5da4f3ab433e55",
                         "54ace0d3df2504fa29f17d424a36a0f92703899fad0afee93d010f6d84b310e5"),
-                new Metadata(key.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false),
-                new NodesData(new ArrayList<>())
+                new Metadata(key.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false, key.getMetadata().serverTimeOffset),
+                new NodesData(key.nodesData.nodeIndexes)
         ));
 
         String v2Verifier = "tkey-google";
         // 1/1 user
         String v2TestEmail = "somev2user@gmail.com";
-        TorusPublicKey key2 = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), new VerifierArgs(v2Verifier, v2TestEmail, "")).get();
-        assertEquals("0xFf669A15bFFcf32D3C5B40bE9E5d409d60D43526", key2.getFinalKeyData().getEvmAddress());
+        TorusPublicKey key2 = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), new VerifierArgs(v2Verifier, v2TestEmail, "")).get();
+        assertEquals("0xFf669A15bFFcf32D3C5B40bE9E5d409d60D43526", key2.getFinalKeyData().getWalletAddress());
         assertEquals(TypeOfUser.v2, key2.getMetadata().getTypeOfUser());
         assertThat(key2).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
                 new OAuthPubKeyData("0xA9c6829e4899b6D630130ebf59D046CA868D7f83",
@@ -120,14 +121,14 @@ public class MainnetTest {
                         "bbfd26b1e61572c4e991a21b64f12b313cb6fce6b443be92d4d5fd8f311e8f33",
                         "df2c905356ec94faaa111a886be56ed6fa215b7facc1d1598486558355123c25"),
                 new Metadata(key2.getMetadata().getPubNonce(),
-                        BigInteger.ZERO, TypeOfUser.v2, false),
-                new NodesData(new ArrayList<>())
+                        BigInteger.ZERO, TypeOfUser.v2, false, key2.getMetadata().getServerTimeOffset()),
+                new NodesData(key2.getNodesData().nodeIndexes)
         ));
 
         // v1 user
         String v2nTestEmail = "caspertorus@gmail.com";
-        TorusPublicKey key3 = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), new VerifierArgs(v2Verifier, v2nTestEmail, "")).get();
-        assertEquals("0x40A4A04fDa1f29a3667152C8830112FBd6A77BDD", key3.getFinalKeyData().getEvmAddress());
+        TorusPublicKey key3 = torusUtils.getUserTypeAndAddress(nodeDetails.getTorusNodeEndpoints(), new VerifierArgs(v2Verifier, v2nTestEmail, "")).get();
+        assertEquals("0x40A4A04fDa1f29a3667152C8830112FBd6A77BDD", key3.getFinalKeyData().getWalletAddress());
         assertEquals(TypeOfUser.v2, key3.getMetadata().getTypeOfUser());
         assertThat(key3).isEqualToComparingFieldByFieldRecursively(new TorusPublicKey(
                 new OAuthPubKeyData("0x61E52B6e488EC3dD6FDc0F5ed04a62Bb9c6BeF53",
@@ -136,8 +137,8 @@ public class MainnetTest {
                 new FinalPubKeyData("0x40A4A04fDa1f29a3667152C8830112FBd6A77BDD",
                         "6779af3031d9e9eec6b4133b0ae13e367c83a614f92d2008e10c7f3b8e6723bc",
                         "80edc4502abdfb220dd6e2fcfa2dbb058125dc95873e4bfa6877f9c26da7fdff"),
-                new Metadata(key3.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false),
-                new NodesData(new ArrayList<>())
+                new Metadata(key3.getMetadata().getPubNonce(), BigInteger.ZERO, TypeOfUser.v2, false, key3.getMetadata().serverTimeOffset),
+                new NodesData(key3.getNodesData().nodeIndexes)
         ));
     }
 
@@ -146,12 +147,12 @@ public class MainnetTest {
     public void shouldKeyAssign() throws ExecutionException, InterruptedException {
         String email = JwtUtils.getRandomEmail();
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails("google", email).get();
-        TorusPublicKey publicAddress = torusUtils.getPublicAddress(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusNodePub(), new VerifierArgs("google", email, "")).get();
-        System.out.println(email + " -> " + publicAddress.getFinalKeyData().getEvmAddress());
-        assertNotNull(publicAddress.getFinalKeyData().getEvmAddress());
-        assertNotEquals(publicAddress.getFinalKeyData().getEvmAddress(), "");
-        assertNotNull(publicAddress.getoAuthKeyData().getEvmAddress());
-        assertNotEquals(publicAddress.getoAuthKeyData().getEvmAddress(), "");
+        TorusPublicKey publicAddress = torusUtils.getPublicAddress(nodeDetails.getTorusNodeEndpoints(), new VerifierArgs("google", email, "")).get();
+        System.out.println(email + " -> " + publicAddress.getFinalKeyData().getWalletAddress());
+        assertNotNull(publicAddress.getFinalKeyData().getWalletAddress());
+        assertNotEquals(publicAddress.getFinalKeyData().getWalletAddress(), "");
+        assertNotNull(publicAddress.getoAuthKeyData().getWalletAddress());
+        assertNotEquals(publicAddress.getoAuthKeyData().getWalletAddress(), "");
         assertEquals(publicAddress.getMetadata().isUpgraded(), false);
     }
 
@@ -159,11 +160,12 @@ public class MainnetTest {
     @Test
     public void shouldLogin() throws ExecutionException, InterruptedException {
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_VERIFIER, TORUS_TEST_EMAIL).get();
-        RetrieveSharesResponse retrieveSharesResponse = torusUtils.retrieveShares(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusIndexes(), TORUS_TEST_VERIFIER, new HashMap<String, Object>() {{
+        TorusKey torusKey = torusUtils.retrieveShares(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusIndexes(), TORUS_TEST_VERIFIER, new HashMap<String, Object>() {{
             put("verifier_id", TORUS_TEST_EMAIL);
-        }}, JwtUtils.generateIdToken(TORUS_TEST_EMAIL, algorithmRs)).get();
-        assert (retrieveSharesResponse.getFinalKeyData().getPrivKey().equals("0129494416ab5d5f674692b39fa49680e07d3aac01b9683ee7650e40805d4c44"));
-        assertThat(retrieveSharesResponse).isEqualToComparingFieldByFieldRecursively(new RetrieveSharesResponse(
+        }}, JwtUtils.generateIdToken(TORUS_TEST_EMAIL, algorithmRs), nodeDetails.getTorusNodePub()).get();
+        assertTrue(JwtUtils.getTimeDiff(torusKey.getMetadata().getServerTimeOffset()) < 20);
+        assert (torusKey.getFinalKeyData().getPrivKey().equals("0129494416ab5d5f674692b39fa49680e07d3aac01b9683ee7650e40805d4c44"));
+        assertThat(torusKey).isEqualToComparingFieldByFieldRecursively(new TorusKey(
                 new FinalKeyData("0x90A926b698047b4A87265ba1E9D8b512E8489067",
                         "a92d8bf1f01ad62e189a5cb0f606b89aa6df1b867128438c38e3209f3b9fc34f",
                         "ad1ffaecb2178b02a37c455975368be9b967ead1b281202cc8d48c77618bff1",
@@ -172,9 +174,9 @@ public class MainnetTest {
                         "a92d8bf1f01ad62e189a5cb0f606b89aa6df1b867128438c38e3209f3b9fc34f",
                         "0ad1ffaecb2178b02a37c455975368be9b967ead1b281202cc8d48c77618bff1",
                         "129494416ab5d5f674692b39fa49680e07d3aac01b9683ee7650e40805d4c44"),
-                new SessionData(new ArrayList<>(), retrieveSharesResponse.sessionData.sessionAuthKey),
-                new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false),
-                new NodesData(new ArrayList<>())
+                new SessionData(new ArrayList<>(), torusKey.sessionData.sessionAuthKey),
+                new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false, torusKey.getMetadata().serverTimeOffset),
+                new NodesData(torusKey.nodesData.nodeIndexes)
         ));
     }
 
@@ -184,13 +186,14 @@ public class MainnetTest {
         String idToken = JwtUtils.generateIdToken(TORUS_TEST_EMAIL, algorithmRs);
         String hashedIdToken = Hash.sha3String(idToken).substring(2);
         NodeDetails nodeDetails = fetchNodeDetails.getNodeDetails(TORUS_TEST_AGGREGATE_VERIFIER, TORUS_TEST_EMAIL).get();
-        RetrieveSharesResponse retrieveSharesResponse = torusUtils.retrieveShares(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusIndexes(), TORUS_TEST_AGGREGATE_VERIFIER, new HashMap<String, Object>() {{
+        TorusKey torusKey = torusUtils.retrieveShares(nodeDetails.getTorusNodeEndpoints(), nodeDetails.getTorusIndexes(), TORUS_TEST_AGGREGATE_VERIFIER, new HashMap<String, Object>() {{
             put("verify_params", new VerifyParams[]{new VerifyParams(idToken, TORUS_TEST_EMAIL)});
             put("sub_verifier_ids", new String[]{TORUS_TEST_VERIFIER});
             put("verifier_id", TORUS_TEST_EMAIL);
-        }}, hashedIdToken).get();
-        assertEquals("0x621a4d458cFd345dAE831D9E756F10cC40A50381", retrieveSharesResponse.getoAuthKeyData().getEvmAddress());
-        assertThat(retrieveSharesResponse).isEqualToComparingFieldByFieldRecursively(new RetrieveSharesResponse(
+        }}, hashedIdToken, nodeDetails.getTorusNodePub()).get();
+        assertTrue(JwtUtils.getTimeDiff(torusKey.getMetadata().getServerTimeOffset()) < 20);
+        assertEquals("0x621a4d458cFd345dAE831D9E756F10cC40A50381", torusKey.getoAuthKeyData().getWalletAddress());
+        assertThat(torusKey).isEqualToComparingFieldByFieldRecursively(new TorusKey(
                 new FinalKeyData("0x621a4d458cFd345dAE831D9E756F10cC40A50381",
                         "52abc69ebec21deacd273dbdcb4d40066b701177bba906a187676e3292e1e236",
                         "5e57e251db2c95c874f7ec852439302a62ef9592c8c50024e3d48018a6f77c7e",
@@ -199,9 +202,9 @@ public class MainnetTest {
                         "52abc69ebec21deacd273dbdcb4d40066b701177bba906a187676e3292e1e236",
                         "5e57e251db2c95c874f7ec852439302a62ef9592c8c50024e3d48018a6f77c7e",
                         "f55d89088a0c491d797c00da5b2ed6dc9c269c960ff121e45f255d06a91c6534"),
-                new SessionData(new ArrayList<>(), retrieveSharesResponse.sessionData.sessionAuthKey),
-                new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false),
-                new NodesData(new ArrayList<>())
+                new SessionData(new ArrayList<>(), torusKey.sessionData.sessionAuthKey),
+                new Metadata(null, BigInteger.ZERO, TypeOfUser.v1, false, torusKey.getMetadata().serverTimeOffset),
+                new NodesData(torusKey.nodesData.nodeIndexes)
         ));
     }
 }
