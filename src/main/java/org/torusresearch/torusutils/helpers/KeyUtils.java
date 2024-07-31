@@ -3,6 +3,7 @@ package org.torusresearch.torusutils.helpers;
 import static org.torusresearch.torusutils.helpers.Utils.addLeading0sForLength64;
 import static org.torusresearch.torusutils.helpers.Utils.getRandomBytes;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.gson.Gson;
 
 import org.bouncycastle.asn1.x9.ECNamedCurveTable;
@@ -37,8 +38,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class KeyUtils {
     private static final ECDomainParameters curve;
@@ -173,7 +174,7 @@ public class KeyUtils {
         );
     }
 
-    public static NonceMetadataParams generateNonceMetadataParams(String operation, BigInteger privateKey, BigInteger nonce, BigInteger serverTimeOffset) {
+    public static NonceMetadataParams generateNonceMetadataParams(String operation, BigInteger privateKey, BigInteger nonce, BigInteger serverTimeOffset) throws JsonProcessingException {
         long timeSeconds = System.currentTimeMillis() / 1000L;
         BigInteger timestamp = serverTimeOffset.add(BigInteger.valueOf(timeSeconds));
 
@@ -192,11 +193,13 @@ public class KeyUtils {
         }
 
         // Convert SetNonceData object to JSON string
+        /*ObjectMapper objectMapper = new ObjectMapper();
+        String encodedData = objectMapper.writeValueAsString(setNonceData);*/
         Gson gson = new Gson();
-        String setDataString = gson.toJson(setNonceData);
+        String encodedData = gson.toJson(setNonceData);
 
         // Hash the JSON string using keccak256 (SHA-3)
-        byte[] hashedData = Hash.sha3(setDataString.getBytes(StandardCharsets.UTF_8));
+        byte[] hashedData = Hash.sha3(encodedData.getBytes(StandardCharsets.UTF_8));
 
         // Sign the hashed data using ECDSA with the private key
         ECDSASignature signature = ecKeyPair.sign(hashedData);
@@ -213,7 +216,8 @@ public class KeyUtils {
         String finalSig = new String(Base64.encodeBytesToBytes(sigBytes), StandardCharsets.UTF_8);
 
         // Return a new NonceMetadataParams object with the derived values
-        return new NonceMetadataParams(derivedPubKeyX, derivedPubKeyY, setNonceData, setDataString, finalSig);
+        return new NonceMetadataParams(derivedPubKeyX, derivedPubKeyY, setNonceData,
+                Base64.encodeBytes(encodedData.getBytes(StandardCharsets.UTF_8)), finalSig);
     }
 
     public static List<ImportedShare> generateShares(KeyType keyType, BigInteger serverTimeOffset, List<BigInteger> nodeIndexes, List<TorusNodePub> nodePubKeys, String privateKey) throws Exception {
@@ -231,21 +235,22 @@ public class KeyUtils {
         }
 
         Polynomial poly = Lagrange.generateRandomPolynomial(degree, new BigInteger(keyData.getOAuthKey(), 16), null);
-        HashMap<BigInteger, Share> shares = poly.generateShares(nodeIndexesBN.toArray(new BigInteger[0]));
+        Map<String, Share> shares = poly.generateShares(nodeIndexesBN.toArray(new BigInteger[0]));
 
         NonceMetadataParams nonceParams = KeyUtils.generateNonceMetadataParams("getOrSetNonce", new BigInteger(keyData.getSigningKey(), 16), new BigInteger(keyData.getNonce(), 16), serverTimeOffset);
 
         List<Ecies> encShares = new ArrayList<>();
         for (int i = 0; i < nodePubKeys.size(); i++) {
-            String indexHex = nodeIndexes.get(i).toString(16);
-            String indexHexPadded = Utils.addLeadingZerosForLength64(indexHex);
+            String indexHex = String.format("%064x", nodeIndexes.get(i));
+            //String indexHexPadded = Utils.addLeadingZerosForLength64(indexHex);
+            //BigInt and converted to
 
-            Share shareInfo = shares.get(indexHexPadded);
+            Share shareInfo = shares.get(indexHex);
 
             String iv = Utils.convertByteToHexadecimal(Utils.getRandomBytes(16));
             String nodePub = KeyUtils.getPublicKeyFromCoords(nodePubKeys.get(i).getX(), nodePubKeys.get(i).getY(), true);
             AES256CBC aes256cbc = new org.torusresearch.torusutils.helpers.AES256CBC(privateKey, nodePub, iv);
-            String encryptedMsg = aes256cbc.encrypt(Utils.padLeft(shareInfo.getShare().toString(16), '0', 64).getBytes(StandardCharsets.UTF_8));
+            String encryptedMsg = aes256cbc.encryptAndHex(AES256CBC.toByteArray(Utils.padLeft(shareInfo.getShare().toString(16), '0', 64)));
             String mac = aes256cbc.getMacKey();
             Ecies encrypted = new Ecies(iv, nodePub, encryptedMsg, mac);
             encShares.add(encrypted);
